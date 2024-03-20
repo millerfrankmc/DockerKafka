@@ -1,8 +1,5 @@
 version: "3.7"
 
-networks:
-  netmessage:
-
 services:
   kafka-ui:
     hostname: kafka-ui
@@ -20,9 +17,6 @@ services:
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: first
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect0:8083
 
-    networks:
-      - netmessage
-
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     hostname: zookeeper
@@ -32,8 +26,6 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
-    networks:
-      - netmessage
 
   kafka-broker-1:
     image: confluentinc/cp-kafka:latest
@@ -49,26 +41,22 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-1:19092,PLAINTEXT_INTERNAL://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    networks:
-      - netmessage
 
-schema-registry0:
-  image: confluentinc/cp-schema-registry:7.2.1
-  hostname: schema-registry0
-  container_name: schema-registry0
-  ports:
-    - 8085:8085
-  depends_on:
-    - kafka-broker-1
-  environment:
-    SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka-broker-1:19092
-    SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
-    SCHEMA_REGISTRY_HOST_NAME: schema-registry0
-    SCHEMA_REGISTRY_LISTENERS: http://schema-registry0:8085
+  schema-registry0:
+    image: confluentinc/cp-schema-registry:7.2.1
+    ports:
+      - 8085:8085
+    depends_on:
+      - kafka-broker-1
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka-broker-1:19092
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry0
+      SCHEMA_REGISTRY_LISTENERS: http://schema-registry0:8085
 
-    SCHEMA_REGISTRY_SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: "http"
-    SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: INFO
-    SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: "http"
+      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: INFO
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
 
   kafka-connect0:
     image: confluentinc/cp-kafka-connect:7.2.1
@@ -103,10 +91,10 @@ schema-registry0:
     volumes:
       - ./message.json:/data/message.json
     depends_on:
-      - kafka0
+      - kafka-broker-1
     command: "bash -c 'echo Waiting for Kafka to be ready... && \
-      cub kafka-ready -b kafka0:29092 1 30 && \
-      kafka-topics --create --topic second.users --partitions 3 --replication-factor 1 --if-not-exists --bootstrap-server kafka0:29092 && \
-      kafka-topics --create --topic second.messages --partitions 2 --replication-factor 1 --if-not-exists --bootstrap-server kafka0:29092 && \
-      kafka-topics --create --topic first.messages --partitions 2 --replication-factor 1 --if-not-exists --bootstrap-server kafka0:29092 && \
-      kafka-console-producer --bootstrap-server kafka0:29092 --topic second.users < /data/message.json'"
+      cub kafka-ready -b kafka-broker-1:19092 1 30 && \
+      kafka-topics --create --topic second.users --partitions 3 --replication-factor 1 --if-not-exists --bootstrap-server kafka-broker-1:19092 && \
+      kafka-topics --create --topic second.messages --partitions 2 --replication-factor 1 --if-not-exists --bootstrap-server kafka-broker-1:19092 && \
+      kafka-topics --create --topic first.messages --partitions 2 --replication-factor 1 --if-not-exists --bootstrap-server kafka-broker-1:19092 && \
+      kafka-console-producer --bootstrap-server kafka-broker-1:19092 --topic second.users < /data/message.json'"
